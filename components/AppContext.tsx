@@ -114,7 +114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [itinerary, setItinerary] = useState<DayPlan[]>([]);
   const [notes, setNotes] = useState<string>('');
   const [rates, setRatesState] = useState<Rates>(defaultRates);
-  const [people, setPeopleState] = useState<string[]>(['คิว', 'วาว', 'แม่']);
+  const [people, setPeopleState] = useState<string[]>(['You', 'Friend 1', 'Friend 2']);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load from storage/Supabase on first mount
@@ -124,11 +124,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (isEntitiesMode) {
           // Load from normalized tables
           try {
-            const { checklist: clE, expenses: exE, itinerary: itE, notes: ntE } = await loadAllFromEntities();
+            const { checklist: clE, expenses: exE, itinerary: itE, notes: ntE, people: pplE } = await loadAllFromEntities();
             setChecklist(clE);
             setExpenses(exE);
             setItinerary(itE);
             setNotes(ntE);
+            if (pplE && pplE.length) setPeopleState(pplE);
             setRatesState(defaultRates);
             return; // skip local init
           } catch (err) {
@@ -198,6 +199,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (d.expenses) setExpenses(normalizeExpenses(d.expenses));
           if (d.itinerary) setItinerary(normalizeItinerary(d.itinerary));
           if (typeof d.notes === 'string') setNotes(d.notes);
+          if (Array.isArray(d.people)) setPeopleState(d.people);
         }
       });
     })();
@@ -206,7 +208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const queueCloudSync = () => {
     if (syncTimer.current) clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(() => {
-      void tryCloudSync({ checklist, expenses, itinerary, notes });
+      void tryCloudSync({ checklist, expenses, itinerary, notes, people });
     }, 800);
   };
 
@@ -243,6 +245,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (Array.isArray(people) && people.length) {
       idbSet('settings', 'people', people);
     }
+    if (!isEntitiesMode) queueCloudSync();
   }, [people]);
 
   // Checklist API
@@ -372,7 +375,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     deleteExpense,
     resetExpenses,
     setRates,
-    setPeople: setPeopleState,
+    setPeople: (p: string[]) => {
+      setPeopleState(p);
+      if (isEntitiesMode) {
+        import('@/lib/entities').then(m => { try { m.entReplaceMembers(p); } catch {} });
+      }
+    },
     addNewDay,
     deleteDay,
     addActivity,
@@ -382,7 +390,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     exportData,
     importData,
     toTHB: (amt, cur) => toTHB(amt, cur, rates),
-    cloudSync: async () => tryCloudSync({ checklist, expenses, itinerary, notes }),
+    cloudSync: async () => tryCloudSync({ checklist, expenses, itinerary, notes, people }),
     cloudLoad: async () => tryCloudLoad(),
     cloudEnabled: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     reloadFromRemote: async () => {

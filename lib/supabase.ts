@@ -15,6 +15,7 @@ export type CloudSyncPayload = {
   expenses: any[];
   itinerary: any[];
   notes: string;
+  people?: string[];
 };
 
 export async function tryCloudSync(payload: CloudSyncPayload) {

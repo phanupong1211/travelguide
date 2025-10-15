@@ -5,10 +5,10 @@ import TabNav from '@/components/TabNav';
 import Checklist from '@/components/Checklist';
 import Expenses from '@/components/Expenses';
 import Itinerary from '@/components/Itinerary';
-import dynamic from 'next/dynamic';
-const SyncButton = dynamic(() => import('@/components/SyncButton'), { ssr: false });
-import Settings from '@/components/Settings';
-import Settlement from '@/components/Settlement';
+import nextDynamic from 'next/dynamic';
+const SyncButton = nextDynamic(() => import('@/components/SyncButton'), { ssr: false });
+const Settings = nextDynamic(() => import('@/components/Settings'), { ssr: false });
+const Settlement = nextDynamic(() => import('@/components/Settlement'), { ssr: false });
 
 export default function Page() {
   const [tab, setTab] = useState<'checklist' | 'expenses' | 'itinerary'>('checklist');
@@ -61,3 +61,5 @@ export default function Page() {
     </AppProvider>
   );
 }
+
+export const dynamic = 'force-dynamic';

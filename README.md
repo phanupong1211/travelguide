@@ -31,6 +31,7 @@ Supabase Cloud Sync (optional)
    - `supabase/setup.sql` → เก็บข้อมูลทั้งแอปไว้ในคอลัมน์ JSON เดียว (วิธีที่แอปใช้ตอนนี้)
    - `supabase/schema_entities.sql` → สร้างตารางแบบ normalized แยก Trips/Checklist/Expenses/Itinerary (สำหรับงานรายงาน/ต่อยอด)
    - ถ้าต้องการแยกแชร์ค่าใช้จ่ายรายคน: รัน migration เพิ่มเติม `supabase/migrations/20251015_expenses_split.sql` เพื่อเพิ่มคอลัมน์ `paid_by text` และ `participants text[]` ในตาราง `expenses`
+   - ถ้าต้องการ sync รายชื่อสมาชิกข้ามอุปกรณ์: รัน `supabase/migrations/20251015_trip_members.sql` เพื่อสร้างตาราง `trip_members`
 3) Copy `.env.example` to `.env.local` and fill in values:
    - `NEXT_PUBLIC_SUPABASE_URL` = your project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = anon key
@@ -39,7 +40,7 @@ Supabase Cloud Sync (optional)
    - ถ้าใช้ entities mode: `NEXT_PUBLIC_TRIP_ID=1` (รหัสทริปที่จะโหลด)
  4) Start the app —
    - JSON mode: จะ sync ทั้ง payload เป็น JSON เดียว
-   - Entities mode: แอปจะอ่าน/เขียนตารางจริงด้วย Supabase (ยังเก็บสำรองลง IndexedDB/localStorage เหมือนเดิม)
+   - Entities mode: แอปจะอ่าน/เขียนตารางจริงด้วย Supabase (ยังเก็บสำรองลง IndexedDB/localStorage เหมือนเดิม) รวมถึงรายชื่อสมาชิกใน `trip_members`
 
 Notes
 - If you need exact pixel parity with the HTML, all Tailwind class names were kept the same. Minor differences may stem from React-driven state vs. inline scripts.

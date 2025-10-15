@@ -8,7 +8,7 @@ function ensureClient() {
   if (!supabase) throw new Error('Supabase client not configured');
 }
 
-export async function loadAllFromEntities(): Promise<{ checklist: ChecklistItem[]; expenses: Expense[]; itinerary: DayPlan[]; notes: string }>
+export async function loadAllFromEntities(): Promise<{ checklist: ChecklistItem[]; expenses: Expense[]; itinerary: DayPlan[]; notes: string; people: string[] }>
 {
   ensureClient();
   // checklist
@@ -51,6 +51,14 @@ export async function loadAllFromEntities(): Promise<{ checklist: ChecklistItem[
     acts = aData || [];
   }
 
+  // members
+  const { data: members, error: e5 } = await supabase!
+    .from('trip_members')
+    .select('name, sort_order')
+    .eq('trip_id', tripId)
+    .order('sort_order', { ascending: true });
+  if (e5) throw e5;
+
   // Build structures
   const checklist: ChecklistItem[] = (cl || []).map((x) => ({ id: x.id, text: x.text, checked: !!x.checked }));
 
@@ -86,9 +94,10 @@ export async function loadAllFromEntities(): Promise<{ checklist: ChecklistItem[
   }));
 
   // Notes are not part of schema; keep local only for now
-  const notes = localStorage.getItem('travelNotes') || '';
+  const notes = typeof localStorage !== 'undefined' ? (localStorage.getItem('travelNotes') || '') : '';
+  const people = (members || []).map((m: any) => m.name).filter(Boolean);
 
-  return { checklist, expenses, itinerary, notes };
+  return { checklist, expenses, itinerary, notes, people };
 }
 
 // Checklist CRUD
@@ -195,4 +204,16 @@ export async function entDeleteActivity(activityId: number) {
   ensureClient();
   const { error } = await supabase!.from('itinerary_activities').delete().eq('id', activityId);
   if (error) throw error;
+}
+
+// Members management (replace-all strategy)
+export async function entReplaceMembers(names: string[]) {
+  ensureClient();
+  // Delete old
+  let { error } = await supabase!.from('trip_members').delete().eq('trip_id', tripId);
+  if (error) throw error;
+  if (!names.length) return;
+  const rows = names.map((name, idx) => ({ trip_id: tripId, name, sort_order: idx + 1 }));
+  const res = await supabase!.from('trip_members').insert(rows);
+  if (res.error) throw res.error;
 }
