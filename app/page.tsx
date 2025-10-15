@@ -9,6 +9,8 @@ import nextDynamic from 'next/dynamic';
 const SyncButton = nextDynamic(() => import('@/components/SyncButton'), { ssr: false });
 const Settings = nextDynamic(() => import('@/components/Settings'), { ssr: false });
 const Settlement = nextDynamic(() => import('@/components/Settlement'), { ssr: false });
+const BusyOverlay = nextDynamic(() => import('@/components/BusyOverlay'), { ssr: false });
+const Splash = nextDynamic(() => import('@/components/Splash'), { ssr: false });
 
 export default function Page() {
   const [tab, setTab] = useState<'checklist' | 'expenses' | 'itinerary'>('checklist');
@@ -17,7 +19,7 @@ export default function Page() {
 
   return (
     <AppProvider>
-      <div className="max-w-md mx-auto bg-white border-l border-r border-gray-200 min-h-full" suppressHydrationWarning>
+      <div className="relative max-w-md mx-auto bg-white border-l border-r border-gray-200 min-h-full" suppressHydrationWarning>
         <div className="bg-gray-900 text-white p-4 border-b border-gray-200 relative">
           <div className="flex items-center justify-between" suppressHydrationWarning>
             <div className="flex items-center gap-2">
@@ -50,6 +52,8 @@ export default function Page() {
         )}
         {view === 'settings' && <Settings />}
         {view === 'settlement' && <Settlement />}
+        <BusyOverlay />
+        <Splash />
       </div>
     </AppProvider>
   );

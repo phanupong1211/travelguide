@@ -45,6 +45,9 @@ type AppState = {
   notes: string;
   rates: Rates;
   people: string[];
+  ready: boolean;
+  busy: boolean;
+  busyText: string | null;
 
   // Checklist
   addChecklistItem: (text: string) => void;
@@ -60,6 +63,7 @@ type AppState = {
   resetExpenses: () => void;
   setRates: (r: Partial<Rates>) => void;
   setPeople: (p: string[]) => void;
+  transientBusy: (label?: string, ms?: number) => void;
 
   // Itinerary
   addNewDay: (title: string) => void;
@@ -116,6 +120,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notes, setNotes] = useState<string>('');
   const [rates, setRatesState] = useState<Rates>(defaultRates);
   const [people, setPeopleState] = useState<string[]>(['You', 'Friend 1', 'Friend 2']);
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [busyText, setBusyText] = useState<string | null>(null);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load from storage/Supabase on first mount
@@ -132,6 +139,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setNotes(ntE);
             if (pplE && pplE.length) setPeopleState(pplE);
             setRatesState(defaultRates);
+            setReady(true);
             return; // skip local init
           } catch (err) {
             console.warn('Entities mode load failed, falling back to local/JSON:', err);
@@ -169,6 +177,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setNotes(nt != null ? nt : (localStorage.getItem('travelNotes') || ''));
         setRatesState(st || defaultRates);
         setPeopleState(ppl && ppl.length ? ppl : ['You', 'Friend 1', 'Friend 2']);
+        setReady(true);
       } catch {
         const normalizeExpenses = (arr: any[] = []) => arr.map((e) => ({ ...e, amount: Number(e?.amount ?? 0), currency: e?.currency || 'THB', paidBy: (e as any).paidBy ?? null, participants: Array.isArray((e as any).participants) ? (e as any).participants : undefined }));
         const normalizeItinerary = (arr: any[] = []) => arr.map((d) => ({
@@ -183,6 +192,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setNotes(localStorage.getItem('travelNotes') || '');
         setRatesState(defaultRates);
         setPeopleState(['You', 'Friend 1', 'Friend 2']);
+        setReady(true);
       }
 
       // try cloud load (non-blocking) when JSON mode
@@ -211,6 +221,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     syncTimer.current = setTimeout(() => {
       void tryCloudSync({ checklist, expenses, itinerary, notes, people });
     }, 800);
+  };
+
+  const runBusy = async (label: string, fn: () => Promise<any>) => {
+    try {
+      setBusy(true);
+      setBusyText(label);
+      await fn();
+    } finally {
+      setBusy(false);
+      setBusyText(null);
+    }
+  };
+
+  const transientBusy = (label?: string, ms = 300) => {
+    setBusy(true);
+    if (label) setBusyText(label);
+    setTimeout(() => { setBusy(false); setBusyText(null); }, ms);
   };
 
   // Persist to IDB + localStorage and attempt cloud sync (JSON mode only)
@@ -262,22 +289,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Checklist API
   const addChecklistItem = async (text: string) => {
     if (isEntitiesMode) {
-      const row = await entAddChecklistItem(text);
-      setChecklist((prev) => [...prev, { id: row.id, text: row.text, checked: row.checked }]);
+      await runBusy('Saving item...', async () => {
+        const row = await entAddChecklistItem(text);
+        setChecklist((prev) => [...prev, { id: row.id, text: row.text, checked: row.checked }]);
+      });
     } else {
       setChecklist((prev) => [...prev, { id: Date.now(), text, checked: false }]);
+      transientBusy('Saved');
     }
   };
   const toggleChecklistItem = async (id: number) => {
     setChecklist((prev) => prev.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)));
     if (isEntitiesMode) {
       const curr = checklist.find((i) => i.id === id);
-      if (curr) await entToggleChecklistItem(id, !curr.checked);
-    }
+      if (curr) await runBusy('Updating...', () => entToggleChecklistItem(id, !curr.checked));
+    } else transientBusy('Updated');
   };
   const deleteChecklistItem = async (id: number) => {
     setChecklist((prev) => prev.filter((i) => i.id !== id));
-    if (isEntitiesMode) await entDeleteChecklistItem(id);
+    if (isEntitiesMode) await runBusy('Deleting...', () => entDeleteChecklistItem(id));
+    else transientBusy('Deleted');
   };
   const clearChecked = () => setChecklist((prev) => prev.map((i) => ({ ...i, checked: false })));
   const resetChecklist = () => setChecklist([]);
@@ -285,36 +316,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Expenses API
   const addExpense: AppState['addExpense'] = async (e) => {
     if (isEntitiesMode) {
-      const id = await entAddExpense(e);
-      setExpenses((prev) => [
-        ...prev,
-        {
-          id,
-          item: e.item,
-          amount: e.amount,
-          currency: e.currency,
-          category: e.category,
-          date: e.date,
-          timestamp: new Date().toISOString(),
-          billPhoto: e.billPhoto ?? null,
-          paidBy: e.paidBy ?? null,
-          participants: e.participants && e.participants.length ? e.participants : undefined,
-        },
-      ]);
+      await runBusy('Saving expense...', async () => {
+        const id = await entAddExpense(e);
+        setExpenses((prev) => [
+          ...prev,
+          {
+            id,
+            item: e.item,
+            amount: e.amount,
+            currency: e.currency,
+            category: e.category,
+            date: e.date,
+            timestamp: new Date().toISOString(),
+            billPhoto: e.billPhoto ?? null,
+            paidBy: e.paidBy ?? null,
+            participants: e.participants && e.participants.length ? e.participants : undefined,
+          },
+        ]);
+      });
     } else {
       setExpenses((prev) => [
         ...prev,
         { id: Date.now(), item: e.item, amount: e.amount, currency: e.currency, category: e.category, date: e.date, timestamp: new Date().toISOString(), billPhoto: e.billPhoto ?? null, paidBy: e.paidBy ?? null, participants: e.participants && e.participants.length ? e.participants : undefined },
       ]);
+      transientBusy('Saved');
     }
   };
   const updateExpenseAmount = async (id: number, amount: number) => {
     setExpenses((prev) => prev.map((x) => (x.id === id ? { ...x, amount } : x)));
-    if (isEntitiesMode) await entUpdateExpenseAmount(id, amount);
+    if (isEntitiesMode) await runBusy('Updating amount...', () => entUpdateExpenseAmount(id, amount));
+    else transientBusy('Updated');
   };
   const deleteExpense = async (id: number) => {
     setExpenses((prev) => prev.filter((x) => x.id !== id));
-    if (isEntitiesMode) await entDeleteExpense(id);
+    if (isEntitiesMode) await runBusy('Deleting...', () => entDeleteExpense(id));
+    else transientBusy('Deleted');
   };
   const resetExpenses = () => setExpenses([]);
   const setRates = (r: Partial<Rates>) => setRatesState((prev) => ({ ...prev, ...r }));
@@ -322,31 +358,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Itinerary API
   const addNewDay = async (title: string) => {
     if (isEntitiesMode) {
-      const id = await entAddDay(title);
-      setItinerary((prev) => [...prev, { id, title, activities: [] }]);
+      await runBusy('Adding day...', async () => {
+        const id = await entAddDay(title);
+        setItinerary((prev) => [...prev, { id, title, activities: [] }]);
+      });
     } else {
       setItinerary((prev) => [...prev, { id: Date.now(), title, activities: [] }]);
+      transientBusy('Added');
     }
   };
   const deleteDay = async (dayId: number) => {
     setItinerary((prev) => prev.filter((d) => d.id !== dayId));
-    if (isEntitiesMode) await entDeleteDay(dayId);
+    if (isEntitiesMode) await runBusy('Deleting day...', () => entDeleteDay(dayId));
+    else transientBusy('Deleted');
   };
   const addActivity: AppState['addActivity'] = async (dayId, a) => {
     if (isEntitiesMode) {
-      const id = await entAddActivity(dayId, a);
-      setItinerary((prev) => prev.map((d) => (d.id === dayId ? { ...d, activities: [...d.activities, { id, ...a }] } : d)));
+      await runBusy('Adding activity...', async () => {
+        const id = await entAddActivity(dayId, a);
+        setItinerary((prev) => prev.map((d) => (d.id === dayId ? { ...d, activities: [...d.activities, { id, ...a }] } : d)));
+      });
     } else {
       setItinerary((prev) => prev.map((d) => (d.id === dayId ? { ...d, activities: [...d.activities, { id: Date.now(), ...a }] } : d)));
+      transientBusy('Added');
     }
   };
   const updateActivity: AppState['updateActivity'] = async (dayId, activityId, a) => {
     setItinerary((prev) => prev.map((d) => (d.id === dayId ? { ...d, activities: d.activities.map((x) => (x.id === activityId ? { ...x, ...a } : x)) } : d)));
-    if (isEntitiesMode) await entUpdateActivity(dayId, activityId, a);
+    if (isEntitiesMode) await runBusy('Updating activity...', () => entUpdateActivity(dayId, activityId, a));
+    else transientBusy('Updated');
   };
   const deleteActivity: AppState['deleteActivity'] = async (dayId, activityId) => {
     setItinerary((prev) => prev.map((d) => (d.id === dayId ? { ...d, activities: d.activities.filter((a) => a.id !== activityId) } : d)));
-    if (isEntitiesMode) await entDeleteActivity(activityId);
+    if (isEntitiesMode) await runBusy('Deleting activity...', () => entDeleteActivity(activityId));
+    else transientBusy('Deleted');
   };
 
   // Import / Export
@@ -376,6 +421,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     notes,
     rates,
     people,
+    ready,
+    busy,
+    busyText,
     addChecklistItem,
     toggleChecklistItem,
     deleteChecklistItem,
@@ -392,6 +440,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         import('@/lib/entities').then(m => { try { m.entReplaceMembers(p); } catch {} });
       }
     },
+    transientBusy,
     addNewDay,
     deleteDay,
     addActivity,
@@ -441,7 +490,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     },
     isEntities: isEntitiesMode,
-  }), [checklist, expenses, itinerary, notes, rates]);
+  }), [checklist, expenses, itinerary, notes, rates, people, ready, busy, busyText]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
