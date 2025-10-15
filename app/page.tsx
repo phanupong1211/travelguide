@@ -11,6 +11,7 @@ const Settings = nextDynamic(() => import('@/components/Settings'), { ssr: false
 const Settlement = nextDynamic(() => import('@/components/Settlement'), { ssr: false });
 const BusyOverlay = nextDynamic(() => import('@/components/BusyOverlay'), { ssr: false });
 const Splash = nextDynamic(() => import('@/components/Splash'), { ssr: false });
+const MobileDrawer = nextDynamic(() => import('@/components/MobileDrawer'), { ssr: false });
 
 export default function Page() {
   const [tab, setTab] = useState<'checklist' | 'expenses' | 'itinerary'>('checklist');
@@ -22,8 +23,8 @@ export default function Page() {
       <div className="relative max-w-md mx-auto bg-white border-l border-r border-gray-200 min-h-full" suppressHydrationWarning>
         <div className="bg-gray-900 text-white p-4 border-b border-gray-200 relative">
           <div className="flex items-center justify-between" suppressHydrationWarning>
-            <div className="flex items-center gap-2">
-              <button aria-label="Menu" onClick={() => setMenuOpen((v) => !v)} className="px-2 py-1 rounded bg-gray-800 hover:bg-gray-700">☰</button>
+            <div className="flex items-center gap-3">
+              <button aria-label="Menu" onClick={() => setMenuOpen((v) => !v)} className="px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-xl">☰</button>
               <h1 className="text-xl font-medium flex items-center">
                 <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
@@ -33,13 +34,7 @@ export default function Page() {
             </div>
             <SyncButton />
           </div>
-          {menuOpen && (
-            <div className="absolute top-14 left-3 bg-white text-gray-900 rounded shadow border min-w-[160px] z-20">
-              <button className="w-full text-left px-3 py-2 hover:bg-gray-100" onClick={() => { setView('main'); setMenuOpen(false); }}>Home</button>
-              <button className="w-full text-left px-3 py-2 hover:bg-gray-100" onClick={() => { setView('settings'); setMenuOpen(false); }}>Settings</button>
-              <button className="w-full text-left px-3 py-2 hover:bg-gray-100" onClick={() => { setView('settlement'); setMenuOpen(false); }}>Settlement</button>
-            </div>
-          )}
+          <MobileDrawer open={menuOpen} onClose={() => setMenuOpen(false)} onNavigate={(v) => setView(v)} />
         </div>
 
         {view === 'main' && (

@@ -42,6 +42,12 @@ export default function Itinerary() {
   const [splitOpen, setSplitOpen] = useState<{ dayId: number; activity: any } | null>(null);
   const [splitSelected, setSplitSelected] = useState<Record<string, boolean>>({});
   const [splitPaidBy, setSplitPaidBy] = useState<string>('');
+  const fmtTime = (t?: string) => {
+    if (!t) return '';
+    // Keep HH:MM only if HH:MM:SS sent through
+    if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t.slice(0,5);
+    return t;
+  };
 
   const startAddActivity = (dayId: number) => {
     setEditing({ dayId });
@@ -116,8 +122,8 @@ export default function Itinerary() {
                           {(activity.arriveTime || activity.leaveTime) && (
                             <div className="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
                               <div className="flex flex-wrap gap-3">
-                                {activity.arriveTime && <span>🕐 Arrive: {activity.arriveTime}</span>}
-                                {activity.leaveTime && <span>🕐 Leave: {activity.leaveTime}</span>}
+                                {activity.arriveTime && <span>🕐 Arrive: {fmtTime(activity.arriveTime)}</span>}
+                                {activity.leaveTime && <span>🕐 Leave: {fmtTime(activity.leaveTime)}</span>}
                                 {duration && <span>⏱️ Duration: {duration}</span>}
                               </div>
                             </div>

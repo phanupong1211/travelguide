@@ -16,3 +16,13 @@ html, body, :root {
   .no-print { display: none !important; }
   body { font-size: 12px; }
 }
+
+/* Mobile touch targets */
+input[type="text"], input[type="number"], input[type="date"], input[type="time"], select, textarea, button {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+/* Ensure native selects/time pickers render comfortably */
+select { padding: 10px; }
+input[type="time"], input[type="date"] { padding: 8px 10px; }
