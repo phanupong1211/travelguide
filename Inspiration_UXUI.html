@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Guide - ไกด์ท่องเที่ยว</title>
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiVHJhdmVsIEd1aWRlIiwic2hvcnRfbmFtZSI6IlRyYXZlbCIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMDA3N2ZmIiwidGhlbWVfY29sb3IiOiIjMDA3N2ZmIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbDtiYXNlNjQsUEhOMlp5QjNhV1IwYUQwaU1USTRJaUJvWldsbmFIUTlJakV5T0NJZ2RtbGxkMEp2ZUQwaU1DQXdJREV5T0NBeU9EZ2lQaUE4Y21WamRDQjNhV1IwYUQwaU1USTRJaUJvWldsbmFIUTlJakk0T0NJZ1ptbHNiRDBpSXpBd056ZG1aaUl2UGlBOEwzTjJaejQ9Iiwic2l6ZXMiOiIxMjh4MTI4IiwidHlwZSI6ImltYWdlL3N2Zyt4bWwifV19">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            box-sizing: border-box;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .expense-row:hover { background-color: #f9fafb; }
+        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .collapsible-content.open { max-height: 1000px; }
+        @media print {
+            .no-print { display: none !important; }
+            body { font-size: 12px; }
+        }
+    </style>
+</head>
+<body class="bg-white min-h-full">
+    <div class="max-w-md mx-auto bg-white border-l border-r border-gray-200 min-h-full">
+        <!-- Header -->
+        <div class="bg-gray-900 text-white p-4 border-b border-gray-200">
+            <h1 class="text-xl font-medium flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                </svg>
+                Travel Guide
+            </h1>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex bg-white border-b border-gray-200">
+            <button class="tab-btn flex-1 py-3 px-2 text-sm font-medium text-gray-900 border-b-2 border-gray-900" data-tab="checklist">
+                Checklist
+            </button>
+            <button class="tab-btn flex-1 py-3 px-2 text-sm font-medium text-gray-400 hover:text-gray-700" data-tab="expenses">
+                Expenses
+            </button>
+            <button class="tab-btn flex-1 py-3 px-2 text-sm font-medium text-gray-400 hover:text-gray-700" data-tab="itinerary">
+                Itinerary
+            </button>
+        </div>
+
+        <!-- Checklist Tab -->
+        <div id="checklist" class="tab-content active p-4">
+            <div class="mb-4">
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="newItem" placeholder="Add new item..." class="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-gray-400 focus:border-gray-400">
+                    <button onclick="addChecklistItem()" class="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-800">
+                        +
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="clearChecked()" class="flex-1 bg-gray-600 text-white py-2 rounded hover:bg-gray-700 text-sm">
+                        Clear checked
+                    </button>
+                    <button onclick="resetChecklist()" class="flex-1 bg-gray-400 text-white py-2 rounded hover:bg-gray-500 text-sm">
+                        Reset all
+                    </button>
+                </div>
+            </div>
+            <div id="checklistItems" class="space-y-2"></div>
+        </div>
+
+        <!-- Expenses Tab -->
+        <div id="expenses" class="tab-content p-4">
+            <!-- Exchange Rate Settings -->
+            <div class="bg-gray-50 p-3 rounded mb-4">
+                <h3 class="font-medium mb-2">Exchange Rates</h3>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                        <label class="block text-gray-600">USD → THB</label>
+                        <input type="number" id="usdRate" value="35" step="0.01" class="w-full px-2 py-1 border border-gray-300 rounded">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600">JPY → THB</label>
+                        <input type="number" id="jpyRate" value="0.24" step="0.01" class="w-full px-2 py-1 border border-gray-300 rounded">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Expense Form -->
+            <div class="bg-gray-50 p-3 rounded mb-4">
+                <h3 class="font-medium mb-2">Add Expense</h3>
+                <div class="space-y-2">
+                    <input type="text" id="expenseItem" placeholder="Item..." class="w-full px-3 py-2 border border-gray-300 rounded">
+                    <div class="flex gap-2">
+                        <input type="number" id="expenseAmount" placeholder="Amount" step="0.01" class="flex-1 px-3 py-2 border border-gray-300 rounded">
+                        <select id="expenseCurrency" class="px-3 py-2 border border-gray-300 rounded">
+                            <option value="THB">THB</option>
+                            <option value="USD">USD</option>
+                            <option value="JPY">JPY</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="expenseCategory" class="flex-1 px-3 py-2 border border-gray-300 rounded">
+                            <option value="Food">Food</option>
+                            <option value="Hotel">Hotel</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Activity">Activity</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input type="date" id="expenseDate" class="px-3 py-2 border border-gray-300 rounded">
+                    </div>
+                    <!-- Bill Upload -->
+                    <div class="border-2 border-dashed border-gray-300 rounded p-3">
+                        <input type="file" id="billUpload" accept="image/*" class="hidden" onchange="handleBillUpload(event)">
+                        <button type="button" onclick="document.getElementById('billUpload').click()" class="w-full flex items-center justify-center gap-2 text-gray-600 hover:text-gray-800">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Upload Bill Photo
+                        </button>
+                        <div id="billPreview" class="mt-2 hidden">
+                            <img id="billImage" class="w-full h-32 object-cover rounded border" alt="Bill preview">
+                            <button type="button" onclick="removeBillPhoto()" class="mt-1 text-red-600 hover:text-red-800 text-sm">
+                                Remove photo
+                            </button>
+                        </div>
+                    </div>
+                    <button onclick="addExpense()" class="w-full bg-gray-900 text-white py-2 rounded hover:bg-gray-800">
+                        Add Expense
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary -->
+            <div class="bg-gray-50 p-3 rounded mb-4">
+                <h3 class="font-medium mb-2">Summary</h3>
+                <div id="expenseSummary" class="text-sm space-y-1"></div>
+            </div>
+
+            <!-- Expense List -->
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-medium">Expense List</h3>
+                </div>
+                <div id="expensesList" class="space-y-1"></div>
+            </div>
+        </div>
+
+        <!-- Itinerary Tab -->
+        <div id="itinerary" class="tab-content p-4">
+            <!-- Add Day Form -->
+            <div class="bg-gray-50 p-3 rounded mb-4 no-print">
+                <h3 class="font-medium mb-2">Add New Day</h3>
+                <div class="space-y-2">
+                    <input type="text" id="dayTitle" placeholder="Day title (e.g., Day 3 - Kyoto)" class="w-full px-3 py-2 border border-gray-300 rounded">
+                    <button onclick="addNewDay()" class="w-full bg-gray-900 text-white py-2 rounded hover:bg-gray-800">
+                        Add Day
+                    </button>
+                </div>
+            </div>
+
+
+
+            <!-- Itinerary Days -->
+            <div id="itineraryDays" class="space-y-3"></div>
+
+
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+
+    <script>
+        // Global variables
+        let checklist = JSON.parse(localStorage.getItem('travelChecklist') || '[]');
+        let expenses = JSON.parse(localStorage.getItem('travelExpenses') || '[]');
+        let notes = localStorage.getItem('travelNotes') || '';
+        let currentBillPhoto = null;
+        let itinerary = JSON.parse(localStorage.getItem('travelItinerary') || `[
+            {
+                "id": 1,
+                "title": "Day 1 - Tokyo",
+                "activities": [
+                    {
+                        "id": 1,
+                        "title": "Morning - Narita Airport",
+                        "description": "Arrive in Tokyo",
+                        "cost": 3000,
+                        "currency": "JPY",
+                        "category": "Transport"
+                    },
+                    {
+                        "id": 2,
+                        "title": "Lunch - Ichiran Ramen",
+                        "description": "Try authentic ramen",
+                        "cost": 1200,
+                        "currency": "JPY",
+                        "category": "Food"
+                    },
+                    {
+                        "id": 3,
+                        "title": "Evening - Shibuya",
+                        "description": "Walk around and shopping",
+                        "cost": 5000,
+                        "currency": "JPY",
+                        "category": "Shopping"
+                    }
+                ]
+            },
+            {
+                "id": 2,
+                "title": "Day 2 - Asakusa & Skytree",
+                "activities": [
+                    {
+                        "id": 4,
+                        "title": "Morning - Sensoji Temple",
+                        "description": "Visit Tokyo's oldest temple",
+                        "cost": 500,
+                        "currency": "JPY",
+                        "category": "Activity"
+                    },
+                    {
+                        "id": 5,
+                        "title": "Afternoon - Tokyo Skytree",
+                        "description": "View Tokyo from above",
+                        "cost": 2100,
+                        "currency": "JPY",
+                        "category": "Activity"
+                    }
+                ]
+            }
+        ]`);
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            renderChecklist();
+            renderExpenses();
+            updateExpenseSummary();
+            renderItinerary();
+            document.getElementById('travelNotes').value = notes;
+            document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+            
+            // Auto-save notes
+            document.getElementById('travelNotes').addEventListener('input', function() {
+                localStorage.setItem('travelNotes', this.value);
+            });
+
+            // Auto-update exchange rates
+            document.getElementById('usdRate').addEventListener('input', updateExpenseSummary);
+            document.getElementById('jpyRate').addEventListener('input', updateExpenseSummary);
+        });
+
+        // Tab functionality
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabId = this.dataset.tab;
+                
+                // Update tab buttons
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('text-gray-900', 'border-b-2', 'border-gray-900');
+                    b.classList.add('text-gray-400');
+                });
+                this.classList.add('text-gray-900', 'border-b-2', 'border-gray-900');
+                this.classList.remove('text-gray-400');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Checklist functions
+        function addChecklistItem() {
+            const input = document.getElementById('newItem');
+            const text = input.value.trim();
+            if (text) {
+                checklist.push({ id: Date.now(), text: text, checked: false });
+                input.value = '';
+                saveAndRenderChecklist();
+            }
+        }
+
+        function toggleChecklistItem(id) {
+            const item = checklist.find(item => item.id === id);
+            if (item) {
+                item.checked = !item.checked;
+                saveAndRenderChecklist();
+            }
+        }
+
+        function deleteChecklistItem(id) {
+            checklist = checklist.filter(item => item.id !== id);
+            saveAndRenderChecklist();
+        }
+
+        function clearChecked() {
+            checklist.forEach(item => item.checked = false);
+            saveAndRenderChecklist();
+        }
+
+        function resetChecklist() {
+            const confirmMessage = document.createElement('div');
+            confirmMessage.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            confirmMessage.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-sm mx-4">
+                    <h3 class="font-medium mb-4">Reset Checklist</h3>
+                    <p class="text-gray-600 mb-4">Are you sure you want to reset all checklist items?</p>
+                    <div class="flex gap-2">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button onclick="checklist = []; saveAndRenderChecklist(); this.closest('.fixed').remove();" class="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmMessage);
+        }
+
+        function saveAndRenderChecklist() {
+            localStorage.setItem('travelChecklist', JSON.stringify(checklist));
+            renderChecklist();
+        }
+
+        function renderChecklist() {
+            const container = document.getElementById('checklistItems');
+            container.innerHTML = checklist.map(item => `
+                <div class="flex items-center gap-3 p-3 bg-white rounded border border-gray-200 ${item.checked ? 'bg-gray-50' : ''}">
+                    <input type="checkbox" ${item.checked ? 'checked' : ''} 
+                           onchange="toggleChecklistItem(${item.id})"
+                           class="w-4 h-4 text-gray-600 rounded focus:ring-gray-400">
+                    <span class="flex-1 ${item.checked ? 'line-through text-gray-500' : ''}">${item.text}</span>
+                    <button onclick="deleteChecklistItem(${item.id})" 
+                            class="text-gray-400 hover:text-gray-600 p-1">
+                        ×
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Expense functions
+        function addExpense() {
+            const item = document.getElementById('expenseItem').value.trim();
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            const currency = document.getElementById('expenseCurrency').value;
+            const category = document.getElementById('expenseCategory').value;
+            const date = document.getElementById('expenseDate').value;
+
+            if (item && amount && date) {
+                expenses.push({
+                    id: Date.now(),
+                    item: item,
+                    amount: amount,
+                    currency: currency,
+                    category: category,
+                    date: date,
+                    timestamp: new Date().toISOString(),
+                    billPhoto: currentBillPhoto
+                });
+
+                // Clear form
+                document.getElementById('expenseItem').value = '';
+                document.getElementById('expenseAmount').value = '';
+                removeBillPhoto();
+                
+                saveAndRenderExpenses();
+            }
+        }
+
+        function addExpenseFromPlan(item, amount, currency, category) {
+            const date = new Date().toISOString().split('T')[0];
+            expenses.push({
+                id: Date.now(),
+                item: item,
+                amount: amount,
+                currency: currency,
+                category: category,
+                date: date,
+                timestamp: new Date().toISOString(),
+                billPhoto: null
+            });
+            saveAndRenderExpenses();
+            
+            // Switch to expenses tab
+            document.querySelector('[data-tab="expenses"]').click();
+        }
+
+        function handleBillUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentBillPhoto = e.target.result;
+                    document.getElementById('billImage').src = currentBillPhoto;
+                    document.getElementById('billPreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeBillPhoto() {
+            currentBillPhoto = null;
+            document.getElementById('billUpload').value = '';
+            document.getElementById('billPreview').classList.add('hidden');
+            document.getElementById('billImage').src = '';
+        }
+
+        function editExpenseAmount(id) {
+            const expense = expenses.find(e => e.id === id);
+            if (expense) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg max-w-sm mx-4">
+                        <h3 class="font-medium mb-4">Edit Amount</h3>
+                        <input type="number" id="editAmount" value="${expense.amount}" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded mb-4">
+                        <div class="flex gap-2">
+                            <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">
+                                Cancel
+                            </button>
+                            <button onclick="updateExpenseAmount(${id}, document.getElementById('editAmount').value); this.closest('.fixed').remove();" class="flex-1 bg-gray-900 text-white py-2 rounded hover:bg-gray-800">
+                                Update
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                document.getElementById('editAmount').focus();
+            }
+        }
+
+        function updateExpenseAmount(id, newAmount) {
+            const expense = expenses.find(e => e.id === id);
+            if (expense && !isNaN(parseFloat(newAmount))) {
+                expense.amount = parseFloat(newAmount);
+                saveAndRenderExpenses();
+            }
+        }
+
+        function deleteExpense(id) {
+            expenses = expenses.filter(e => e.id !== id);
+            saveAndRenderExpenses();
+        }
+
+        function convertToTHB(amount, currency) {
+            const usdRate = parseFloat(document.getElementById('usdRate').value) || 35;
+            const jpyRate = parseFloat(document.getElementById('jpyRate').value) || 0.24;
+            
+            switch(currency) {
+                case 'USD': return amount * usdRate;
+                case 'JPY': return amount * jpyRate;
+                default: return amount;
+            }
+        }
+
+        function saveAndRenderExpenses() {
+            localStorage.setItem('travelExpenses', JSON.stringify(expenses));
+            renderExpenses();
+            updateExpenseSummary();
+        }
+
+        function renderExpenses() {
+            const container = document.getElementById('expensesList');
+            container.innerHTML = expenses.map(expense => {
+                const thbAmount = convertToTHB(expense.amount, expense.currency);
+                return `
+                    <div class="expense-row bg-white rounded border border-gray-200 text-sm">
+                        <div class="flex items-center gap-2 p-2">
+                            <div class="flex-1">
+                                <div class="font-medium">${expense.item}</div>
+                                <div class="text-gray-500 text-xs">${expense.category} • ${expense.date}</div>
+                                ${expense.billPhoto ? `<button onclick="viewBillPhoto(${expense.id})" class="text-blue-600 hover:text-blue-800 text-xs mt-1">📷 View Bill</button>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <div class="font-medium cursor-pointer hover:text-gray-600" onclick="editExpenseAmount(${expense.id})">
+                                    ${expense.amount.toLocaleString()} ${expense.currency}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    ≈ ${thbAmount.toLocaleString()} THB
+                                </div>
+                            </div>
+                            <button onclick="deleteExpense(${expense.id})" class="text-gray-400 hover:text-gray-600 p-1">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateExpenseSummary() {
+            const summary = {};
+            let totalTHB = 0;
+
+            expenses.forEach(expense => {
+                const thbAmount = convertToTHB(expense.amount, expense.currency);
+                totalTHB += thbAmount;
+                
+                if (!summary[expense.category]) {
+                    summary[expense.category] = 0;
+                }
+                summary[expense.category] += thbAmount;
+            });
+
+            const summaryHTML = Object.entries(summary)
+                .map(([category, amount]) => `
+                    <div class="flex justify-between">
+                        <span>${category}:</span>
+                        <span class="font-medium">${amount.toLocaleString()} THB</span>
+                    </div>
+                `).join('') + `
+                <div class="border-t pt-2 mt-2 flex justify-between font-bold text-gray-900">
+                    <span>Total:</span>
+                    <span>${totalTHB.toLocaleString()} THB</span>
+                </div>
+            `;
+
+            document.getElementById('expenseSummary').innerHTML = summaryHTML;
+        }
+
+        function exportExpenses() {
+            const data = {
+                expenses: expenses,
+                checklist: checklist,
+                notes: document.getElementById('travelNotes').value,
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `travel-data-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importExpenses() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.expenses) expenses = data.expenses;
+                        if (data.checklist) checklist = data.checklist;
+                        if (data.notes) document.getElementById('travelNotes').value = data.notes;
+                        
+                        saveAndRenderExpenses();
+                        saveAndRenderChecklist();
+                        localStorage.setItem('travelNotes', data.notes || '');
+                        
+                        showMessage('Data imported successfully!');
+                    } catch (error) {
+                        showMessage('Invalid file format!', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function resetExpenses() {
+            const confirmMessage = document.createElement('div');
+            confirmMessage.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            confirmMessage.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-sm mx-4">
+                    <h3 class="font-medium mb-4">Reset Expenses</h3>
+                    <p class="text-gray-600 mb-4">Are you sure you want to reset all expense data?</p>
+                    <div class="flex gap-2">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button onclick="expenses = []; saveAndRenderExpenses(); this.closest('.fixed').remove();" class="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmMessage);
+        }
+
+        function viewBillPhoto(expenseId) {
+            const expense = expenses.find(e => e.id === expenseId);
+            if (expense && expense.billPhoto) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg max-w-md w-full max-h-full overflow-auto">
+                        <div class="p-4 border-b flex justify-between items-center">
+                            <h3 class="font-medium">${expense.item} - Bill</h3>
+                            <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 text-xl">
+                                ×
+                            </button>
+                        </div>
+                        <div class="p-4">
+                            <img src="${expense.billPhoto}" alt="Bill photo" class="w-full rounded border">
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+        }
+
+        function showMessage(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 p-4 rounded-lg text-white z-50 ${type === 'error' ? 'bg-red-600' : 'bg-green-600'}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Itinerary functions
+        function addNewDay() {
+            const title = document.getElementById('dayTitle').value.trim();
+            if (title) {
+                const newDay = {
+                    id: Date.now(),
+                    title: title,
+                    activities: []
+                };
+                itinerary.push(newDay);
+                document.getElementById('dayTitle').value = '';
+                saveAndRenderItinerary();
+            }
+        }
+
+        function addActivity(dayId) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-md mx-4 w-full">
+                    <h3 class="font-medium mb-4">Add Activity</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="activityTitle" placeholder="Activity title..." class="w-full px-3 py-2 border border-gray-300 rounded">
+                        <textarea id="activityDescription" placeholder="Description..." class="w-full px-3 py-2 border border-gray-300 rounded h-20 resize-none"></textarea>
+                        
+                        <!-- Time Planning Section -->
+                        <div class="bg-gray-50 p-3 rounded">
+                            <h4 class="text-sm font-medium mb-2 text-gray-700">⏰ Time Planning</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">Arrive Time</label>
+                                    <input type="time" id="activityArriveTime" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">Leave Time</label>
+                                    <input type="time" id="activityLeaveTime" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <input type="number" id="activityCost" placeholder="Cost" step="0.01" class="flex-1 px-3 py-2 border border-gray-300 rounded">
+                            <select id="activityCurrency" class="px-3 py-2 border border-gray-300 rounded">
+                                <option value="THB">THB</option>
+                                <option value="USD">USD</option>
+                                <option value="JPY">JPY</option>
+                            </select>
+                        </div>
+                        <select id="activityCategory" class="w-full px-3 py-2 border border-gray-300 rounded">
+                            <option value="Food">Food</option>
+                            <option value="Hotel">Hotel</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Activity">Activity</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input type="url" id="activityMapLink" placeholder="Map link (optional)..." class="w-full px-3 py-2 border border-gray-300 rounded">
+                    </div>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button onclick="saveActivity(${dayId}); this.closest('.fixed').remove();" class="flex-1 bg-gray-900 text-white py-2 rounded hover:bg-gray-800">
+                            Add
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('activityTitle').focus();
+        }
+
+        function saveActivity(dayId) {
+            const title = document.getElementById('activityTitle').value.trim();
+            const description = document.getElementById('activityDescription').value.trim();
+            const cost = parseFloat(document.getElementById('activityCost').value) || 0;
+            const currency = document.getElementById('activityCurrency').value;
+            const category = document.getElementById('activityCategory').value;
+            const mapLink = document.getElementById('activityMapLink').value.trim();
+            const arriveTime = document.getElementById('activityArriveTime').value;
+            const leaveTime = document.getElementById('activityLeaveTime').value;
+
+            if (title) {
+                const day = itinerary.find(d => d.id === dayId);
+                if (day) {
+                    day.activities.push({
+                        id: Date.now(),
+                        title: title,
+                        description: description,
+                        cost: cost,
+                        currency: currency,
+                        category: category,
+                        mapLink: mapLink,
+                        arriveTime: arriveTime,
+                        leaveTime: leaveTime
+                    });
+                    saveAndRenderItinerary();
+                }
+            }
+        }
+
+        function editActivity(dayId, activityId) {
+            const day = itinerary.find(d => d.id === dayId);
+            const activity = day?.activities.find(a => a.id === activityId);
+            if (!activity) return;
+
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-md mx-4 w-full">
+                    <h3 class="font-medium mb-4">Edit Activity</h3>
+                    <div class="space-y-3">
+                        <input type="text" id="editActivityTitle" value="${activity.title}" class="w-full px-3 py-2 border border-gray-300 rounded">
+                        <textarea id="editActivityDescription" class="w-full px-3 py-2 border border-gray-300 rounded h-20 resize-none">${activity.description}</textarea>
+                        
+                        <!-- Time Planning Section -->
+                        <div class="bg-gray-50 p-3 rounded">
+                            <h4 class="text-sm font-medium mb-2 text-gray-700">⏰ Time Planning</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">Arrive Time</label>
+                                    <input type="time" id="editActivityArriveTime" value="${activity.arriveTime || ''}" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-600 mb-1">Leave Time</label>
+                                    <input type="time" id="editActivityLeaveTime" value="${activity.leaveTime || ''}" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <input type="number" id="editActivityCost" value="${activity.cost}" step="0.01" class="flex-1 px-3 py-2 border border-gray-300 rounded">
+                            <select id="editActivityCurrency" class="px-3 py-2 border border-gray-300 rounded">
+                                <option value="THB" ${activity.currency === 'THB' ? 'selected' : ''}>THB</option>
+                                <option value="USD" ${activity.currency === 'USD' ? 'selected' : ''}>USD</option>
+                                <option value="JPY" ${activity.currency === 'JPY' ? 'selected' : ''}>JPY</option>
+                            </select>
+                        </div>
+                        <select id="editActivityCategory" class="w-full px-3 py-2 border border-gray-300 rounded">
+                            <option value="Food" ${activity.category === 'Food' ? 'selected' : ''}>Food</option>
+                            <option value="Hotel" ${activity.category === 'Hotel' ? 'selected' : ''}>Hotel</option>
+                            <option value="Transport" ${activity.category === 'Transport' ? 'selected' : ''}>Transport</option>
+                            <option value="Shopping" ${activity.category === 'Shopping' ? 'selected' : ''}>Shopping</option>
+                            <option value="Activity" ${activity.category === 'Activity' ? 'selected' : ''}>Activity</option>
+                            <option value="Other" ${activity.category === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                        <input type="url" id="editActivityMapLink" value="${activity.mapLink || ''}" placeholder="Map link (optional)..." class="w-full px-3 py-2 border border-gray-300 rounded">
+                    </div>
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button onclick="updateActivity(${dayId}, ${activityId}); this.closest('.fixed').remove();" class="flex-1 bg-gray-900 text-white py-2 rounded hover:bg-gray-800">
+                            Update
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            document.getElementById('editActivityTitle').focus();
+        }
+
+        function updateActivity(dayId, activityId) {
+            const day = itinerary.find(d => d.id === dayId);
+            const activity = day?.activities.find(a => a.id === activityId);
+            if (!activity) return;
+
+            activity.title = document.getElementById('editActivityTitle').value.trim();
+            activity.description = document.getElementById('editActivityDescription').value.trim();
+            activity.cost = parseFloat(document.getElementById('editActivityCost').value) || 0;
+            activity.currency = document.getElementById('editActivityCurrency').value;
+            activity.category = document.getElementById('editActivityCategory').value;
+            activity.mapLink = document.getElementById('editActivityMapLink').value.trim();
+            activity.arriveTime = document.getElementById('editActivityArriveTime').value;
+            activity.leaveTime = document.getElementById('editActivityLeaveTime').value;
+
+            saveAndRenderItinerary();
+        }
+
+        function deleteActivity(dayId, activityId) {
+            const confirmMessage = document.createElement('div');
+            confirmMessage.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            confirmMessage.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-sm mx-4">
+                    <h3 class="font-medium mb-4">Delete Activity</h3>
+                    <p class="text-gray-600 mb-4">Are you sure you want to delete this activity?</p>
+                    <div class="flex gap-2">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button onclick="confirmDeleteActivity(${dayId}, ${activityId}); this.closest('.fixed').remove();" class="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmMessage);
+        }
+
+        function confirmDeleteActivity(dayId, activityId) {
+            const day = itinerary.find(d => d.id === dayId);
+            if (day) {
+                day.activities = day.activities.filter(a => a.id !== activityId);
+                saveAndRenderItinerary();
+            }
+        }
+
+        function deleteDay(dayId) {
+            const confirmMessage = document.createElement('div');
+            confirmMessage.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            confirmMessage.innerHTML = `
+                <div class="bg-white p-6 rounded-lg max-w-sm mx-4">
+                    <h3 class="font-medium mb-4">Delete Day</h3>
+                    <p class="text-gray-600 mb-4">Are you sure you want to delete this day and all its activities?</p>
+                    <div class="flex gap-2">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button onclick="itinerary = itinerary.filter(d => d.id !== ${dayId}); saveAndRenderItinerary(); this.closest('.fixed').remove();" class="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(confirmMessage);
+        }
+
+        function toggleDay(dayId) {
+            const content = document.getElementById(`day${dayId}`);
+            const icon = content.previousElementSibling.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                icon.textContent = '▶';
+            } else {
+                content.classList.add('open');
+                icon.textContent = '▼';
+            }
+        }
+
+        function calculateDuration(arriveTime, leaveTime) {
+            if (!arriveTime || !leaveTime) return '';
+            
+            const [arriveHour, arriveMin] = arriveTime.split(':').map(Number);
+            const [leaveHour, leaveMin] = leaveTime.split(':').map(Number);
+            
+            const arriveMinutes = arriveHour * 60 + arriveMin;
+            const leaveMinutes = leaveHour * 60 + leaveMin;
+            
+            let durationMinutes = leaveMinutes - arriveMinutes;
+            if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle next day
+            
+            const hours = Math.floor(durationMinutes / 60);
+            const minutes = durationMinutes % 60;
+            
+            if (hours === 0) return `${minutes}min`;
+            if (minutes === 0) return `${hours}h`;
+            return `${hours}h ${minutes}min`;
+        }
+
+        function calculateTravelTime(currentActivity, nextActivity) {
+            if (!currentActivity.leaveTime || !nextActivity.arriveTime) return '';
+            
+            const [leaveHour, leaveMin] = currentActivity.leaveTime.split(':').map(Number);
+            const [arriveHour, arriveMin] = nextActivity.arriveTime.split(':').map(Number);
+            
+            const leaveMinutes = leaveHour * 60 + leaveMin;
+            const arriveMinutes = arriveHour * 60 + arriveMin;
+            
+            let travelMinutes = arriveMinutes - leaveMinutes;
+            if (travelMinutes < 0) travelMinutes += 24 * 60; // Handle next day
+            
+            if (travelMinutes === 0) return '';
+            
+            const hours = Math.floor(travelMinutes / 60);
+            const minutes = travelMinutes % 60;
+            
+            if (hours === 0) return `${minutes}min`;
+            if (minutes === 0) return `${hours}h`;
+            return `${hours}h ${minutes}min`;
+        }
+
+        function saveAndRenderItinerary() {
+            localStorage.setItem('travelItinerary', JSON.stringify(itinerary));
+            renderItinerary();
+        }
+
+        function renderItinerary() {
+            const container = document.getElementById('itineraryDays');
+            container.innerHTML = itinerary.map(day => `
+                <div class="border border-gray-200 rounded overflow-hidden">
+                    <button onclick="toggleDay(${day.id})" class="w-full bg-gray-50 p-3 text-left font-medium hover:bg-gray-100 flex justify-between items-center">
+                        <span>${day.title}</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="event.stopPropagation(); deleteDay(${day.id})" class="text-red-500 hover:text-red-700 p-1 no-print">
+                                🗑️
+                            </button>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                    </button>
+                    <div id="day${day.id}" class="collapsible-content open p-3 bg-white">
+                        <div class="space-y-3">
+                            ${day.activities.map((activity, index) => {
+                                const duration = calculateDuration(activity.arriveTime, activity.leaveTime);
+                                const nextActivity = day.activities[index + 1];
+                                const travelTime = nextActivity ? calculateTravelTime(activity, nextActivity) : '';
+                                
+                                return `
+                                <div class="border-l-4 border-gray-400 pl-3">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <h4 class="font-medium">${activity.title}</h4>
+                                            <p class="text-sm text-gray-600">${activity.description}</p>
+                                            ${activity.arriveTime || activity.leaveTime ? `
+                                                <div class="mt-2 text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                                                    <div class="flex flex-wrap gap-3">
+                                                        ${activity.arriveTime ? `<span>🕐 Arrive: ${activity.arriveTime}</span>` : ''}
+                                                        ${activity.leaveTime ? `<span>🕐 Leave: ${activity.leaveTime}</span>` : ''}
+                                                        ${duration ? `<span>⏱️ Duration: ${duration}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <div class="flex gap-1 no-print">
+                                            <button onclick="editActivity(${day.id}, ${activity.id})" class="text-gray-500 hover:text-gray-700 p-1">
+                                                ✏️
+                                            </button>
+                                            <button onclick="deleteActivity(${day.id}, ${activity.id})" class="text-red-500 hover:text-red-700 p-1">
+                                                ×
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs text-gray-500">Cost: ${activity.cost.toLocaleString()} ${activity.currency}</span>
+                                            ${activity.mapLink ? `<a href="${activity.mapLink}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 text-xs">📍 Map</a>` : ''}
+                                        </div>
+                                        <button onclick="addExpenseFromPlan('${activity.title}', ${activity.cost}, '${activity.currency}', '${activity.category}')" class="bg-gray-600 text-white px-2 py-1 rounded text-xs hover:bg-gray-700 no-print">
+                                            + Add expense
+                                        </button>
+                                    </div>
+                                </div>
+                                ${travelTime ? `
+                                    <div class="flex justify-center my-3">
+                                        <div class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium">
+                                            🚶 Travel time: ${travelTime}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            `;
+                            }).join('')}
+                            <button onclick="addActivity(${day.id})" class="w-full bg-gray-100 text-gray-600 py-2 rounded hover:bg-gray-200 text-sm no-print">
+                                + Add Activity
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function printItinerary() {
+            window.print();
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showMessage('Link copied to clipboard!');
+            });
+        }
+
+        // Enter key support
+        document.getElementById('newItem').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addChecklistItem();
+        });
+
+        document.getElementById('expenseItem').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') document.getElementById('expenseAmount').focus();
+        });
+
+        document.getElementById('expenseAmount').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addExpense();
+        });
+
+        document.getElementById('dayTitle').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addNewDay();
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98e89c15801045c5',t:'MTc2MDQ2MDk4My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

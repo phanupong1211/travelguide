@@ -1,0 +1,21 @@
+{
+  "name": "Travel Guide",
+  "short_name": "Travel",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxOTInIGhlaWdodD0nMTkyJyB2aWV3Qm94PScwIDAgMjQgMjQnPjxjaXJjbGUgY3g9JzEyJyBjeT0nMTInIHI9JzExJyBmaWxsPScjMTExODI3Jy8+PHBhdGggZD0nTTQgNmgxNnYySDE0djZINHYtOFonIGZpbGw9JyNmZmYnLz48cGF0aCBkPSdNNSA5aDhsMiAySDd2MmgtMnptNyA3aDEwdjJoLTEwdjItMmg0JyBmaWxsPScjZmZmJy8+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1MTInIGhlaWdodD0nNTEyJyB2aWV3Qm94PScwIDAgMjQgMjQnPjxjaXJjbGUgY3g9JzEyJyBjeT0nMTInIHI9JzExJyBmaWxsPScjMTExODI3Jy8+PHBhdGggZD0nTTQgNmgxNnYySDE0djZINHYtOFonIGZpbGw9JyNmZmYnLz48cGF0aCBkPSdNNSA5aDhsMiAySDd2MmgtMnptNyA3aDEwdjJoLTEwdjItMmg0JyBmaWxsPScjZmZmJy8+PC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+

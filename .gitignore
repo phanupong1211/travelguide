@@ -1,0 +1,25 @@
+# Node/Next
+node_modules/
+.next/
+out/
+.vercel/
+.wrangler/
+dist/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs / OS
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
+

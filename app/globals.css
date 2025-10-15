@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, :root {
+  height: 100%;
+}
+
+/* Match behaviors from original HTML (tabs handled by React state now) */
+.expense-row:hover { background-color: #f9fafb; }
+.collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+/* Allow long itineraries to expand fully */
+.collapsible-content.open { max-height: 99999px; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { font-size: 12px; }
+}
