@@ -34,7 +34,18 @@ export default function Itinerary() {
   const { itinerary, addNewDay, deleteDay, addActivity, updateActivity, deleteActivity, addExpense, people, toTHB } = useApp() as any;
   const [title, setTitle] = useState('');
 
-  const [openDays, setOpenDays] = useState<Record<number, boolean>>(() => Object.fromEntries(itinerary.map((d: any) => [d.id, true])));
+  // Collapsed by default
+  const [openDays, setOpenDays] = useState<Record<number, boolean>>(() => Object.fromEntries(itinerary.map((d: any) => [d.id, false])));
+  // Ensure any newly loaded/added day starts collapsed
+  React.useEffect(() => {
+    setOpenDays((prev) => {
+      const next = { ...prev } as Record<number, boolean>;
+      (itinerary || []).forEach((d: any) => {
+        if (!(d.id in next)) next[d.id] = false;
+      });
+      return next;
+    });
+  }, [itinerary]);
   const toggleDay = (id: number) => setOpenDays((p) => ({ ...p, [id]: !p[id] }));
 
   const [editing, setEditing] = useState<{ dayId: number; activityId?: number } | null>(null);
