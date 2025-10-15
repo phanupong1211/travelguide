@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'edge';
 
 export async function GET() {
   return NextResponse.json({ status: 'ok', message: 'Use POST to echo/export data' });
@@ -17,4 +18,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }
-
