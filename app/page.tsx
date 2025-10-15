@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { AppProvider } from '@/components/AppContext';
 import TabNav from '@/components/TabNav';
 import Checklist from '@/components/Checklist';
@@ -12,19 +12,12 @@ const Settlement = nextDynamic(() => import('@/components/Settlement'), { ssr: f
 
 export default function Page() {
   const [tab, setTab] = useState<'checklist' | 'expenses' | 'itinerary'>('checklist');
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const [view, setView] = useState<'main' | 'settings' | 'settlement'>('main');
   const [menuOpen, setMenuOpen] = useState(false);
 
-  if (!mounted) {
-    // Avoid hydration mismatch by rendering nothing until client mounts
-    return null;
-  }
-
   return (
     <AppProvider>
-      <div className="max-w-md mx-auto bg-white border-l border-r border-gray-200 min-h-full">
+      <div className="max-w-md mx-auto bg-white border-l border-r border-gray-200 min-h-full" suppressHydrationWarning>
         <div className="bg-gray-900 text-white p-4 border-b border-gray-200 relative">
           <div className="flex items-center justify-between" suppressHydrationWarning>
             <div className="flex items-center gap-2">
@@ -62,4 +55,5 @@ export default function Page() {
   );
 }
 
+// Avoid static pre-render mismatches
 export const dynamic = 'force-dynamic';

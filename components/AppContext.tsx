@@ -4,6 +4,7 @@ import { Currency, Rates, defaultRates, toTHB } from '@/lib/currency';
 import { idbGet, idbSet } from '@/lib/db';
 import { tryCloudLoad, tryCloudSync } from '@/lib/supabase';
 import { isEntitiesMode, loadAllFromEntities, entAddChecklistItem, entToggleChecklistItem, entDeleteChecklistItem, entAddExpense, entUpdateExpenseAmount, entDeleteExpense, entAddDay, entDeleteDay, entAddActivity, entUpdateActivity, entDeleteActivity } from '@/lib/entities';
+import { isStoragePath } from '@/lib/storage';
 
 export type ChecklistItem = { id: number; text: string; checked: boolean };
 export type Expense = {
@@ -221,7 +222,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     idbSet('expenses', 'items', expenses);
-    localStorage.setItem('travelExpenses', JSON.stringify(expenses));
+    // Store a lightweight copy in localStorage to avoid QuotaExceeded (skip base64 images)
+    try {
+      const lite = expenses.map((e) => ({
+        ...e,
+        billPhoto: e.billPhoto && isStoragePath(e.billPhoto) && e.billPhoto.length < 512 ? e.billPhoto : null,
+      }));
+      localStorage.setItem('travelExpenses', JSON.stringify(lite));
+    } catch {
+      // If quota exceeded, fall back to clearing the local copy (IDB still keeps full data)
+      try { localStorage.removeItem('travelExpenses'); } catch {}
+    }
     if (!isEntitiesMode) queueCloudSync();
   }, [expenses]);
 
