@@ -12,10 +12,11 @@ const Settlement = nextDynamic(() => import('@/components/Settlement'), { ssr: f
 const BusyOverlay = nextDynamic(() => import('@/components/BusyOverlay'), { ssr: false });
 const Splash = nextDynamic(() => import('@/components/Splash'), { ssr: false });
 const MobileDrawer = nextDynamic(() => import('@/components/MobileDrawer'), { ssr: false });
+const Converter = nextDynamic(() => import('@/components/Converter'), { ssr: false });
 
 export default function Page() {
   const [tab, setTab] = useState<'checklist' | 'expenses' | 'itinerary'>('checklist');
-  const [view, setView] = useState<'main' | 'settings' | 'settlement'>('main');
+  const [view, setView] = useState<'main' | 'settings' | 'settlement' | 'converter'>('main');
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -46,6 +47,7 @@ export default function Page() {
           </>
         )}
         {view === 'settings' && <Settings />}
+        {view === 'converter' && <Converter />}
         {view === 'settlement' && <Settlement />}
         <BusyOverlay />
         <Splash />

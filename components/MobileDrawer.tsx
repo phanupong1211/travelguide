@@ -4,7 +4,7 @@ import React from 'react';
 type Props = {
   open: boolean;
   onClose: () => void;
-  onNavigate: (view: 'main' | 'settings' | 'settlement') => void;
+  onNavigate: (view: 'main' | 'settings' | 'settlement' | 'converter') => void;
 };
 
 export default function MobileDrawer({ open, onClose, onNavigate }: Props) {
@@ -23,10 +23,10 @@ export default function MobileDrawer({ open, onClose, onNavigate }: Props) {
         <nav className="flex flex-col p-2 text-gray-800">
           <button className="text-left px-3 py-3 hover:bg-gray-100 rounded" onClick={() => { onNavigate('main'); onClose(); }}>Home</button>
           <button className="text-left px-3 py-3 hover:bg-gray-100 rounded" onClick={() => { onNavigate('settings'); onClose(); }}>Settings</button>
+          <button className="text-left px-3 py-3 hover:bg-gray-100 rounded" onClick={() => { onNavigate('converter'); onClose(); }}>Converter</button>
           <button className="text-left px-3 py-3 hover:bg-gray-100 rounded" onClick={() => { onNavigate('settlement'); onClose(); }}>Settlement</button>
         </nav>
       </div>
     </div>
   );
 }
-
