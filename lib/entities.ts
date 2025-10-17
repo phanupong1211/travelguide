@@ -217,3 +217,23 @@ export async function entReplaceMembers(names: string[]) {
   const res = await supabase!.from('trip_members').insert(rows);
   if (res.error) throw res.error;
 }
+
+// Reorder helpers
+export async function entReorderActivities(dayId: number, orderedIds: number[]) {
+  ensureClient();
+  // update sort_order based on index (1-based)
+  for (let i = 0; i < orderedIds.length; i++) {
+    const id = orderedIds[i];
+    const { error } = await supabase!.from('itinerary_activities').update({ sort_order: i + 1 }).eq('id', id).eq('day_id', dayId);
+    if (error) throw error;
+  }
+}
+
+export async function entReorderDays(orderedIds: number[]) {
+  ensureClient();
+  for (let i = 0; i < orderedIds.length; i++) {
+    const id = orderedIds[i];
+    const { error } = await supabase!.from('itinerary_days').update({ sort_order: i + 1 }).eq('id', id);
+    if (error) throw error;
+  }
+}

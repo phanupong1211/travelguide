@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from './AppContext';
 import { Modal } from './Modal';
+import Collapse from './Collapse';
 
 function calculateDuration(arriveTime?: string, leaveTime?: string) {
   if (!arriveTime || !leaveTime) return '';
@@ -31,8 +32,9 @@ function calculateTravelTime(current: any, next: any) {
 }
 
 export default function Itinerary() {
-  const { itinerary, addNewDay, deleteDay, addActivity, updateActivity, deleteActivity, addExpense, people, toTHB } = useApp() as any;
+  const { itinerary, addNewDay, deleteDay, addActivity, updateActivity, deleteActivity, addExpense, people, toTHB, moveActivity, moveDay } = useApp() as any;
   const [title, setTitle] = useState('');
+  const [editMode, setEditMode] = useState(false);
 
   // Collapsed by default
   const [openDays, setOpenDays] = useState<Record<number, boolean>>(() => Object.fromEntries(itinerary.map((d: any) => [d.id, false])));
@@ -46,7 +48,15 @@ export default function Itinerary() {
       return next;
     });
   }, [itinerary]);
-  const toggleDay = (id: number) => setOpenDays((p) => ({ ...p, [id]: !p[id] }));
+  const toggleDay = (id: number) => setOpenDays((prev) => {
+    const currentlyOpen = !!prev[id];
+    // Close all by default
+    const next: Record<number, boolean> = {};
+    (itinerary || []).forEach((d: any) => { next[d.id] = false; });
+    // If the clicked day was closed, open it; if it was open, keep all closed
+    if (!currentlyOpen) next[id] = true;
+    return next;
+  });
 
   const [editing, setEditing] = useState<{ dayId: number; activityId?: number } | null>(null);
   const [draft, setDraft] = useState<any>({});
@@ -89,7 +99,10 @@ export default function Itinerary() {
   return (
     <div id="itinerary" className="p-4">
       <div className="bg-gray-50 p-3 rounded mb-4 no-print">
-        <h3 className="font-medium mb-2">Add New Day</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-medium">Add New Day</h3>
+          <button onClick={() => setEditMode((v) => !v)} className={`px-3 py-1 rounded text-sm ${editMode ? 'bg-gray-900 text-white' : 'bg-gray-800/10 text-gray-800'}`}>{editMode ? 'Done' : 'Edit'}</button>
+        </div>
         <div className="space-y-2">
           <input
             type="text"
@@ -111,14 +124,27 @@ export default function Itinerary() {
           <div key={day.id} className="border border-gray-200 rounded overflow-hidden">
             <button onClick={() => toggleDay(day.id)} className="w-full bg-gray-50 p-3 text-left font-medium hover:bg-gray-100 flex justify-between items-center">
               <span>{day.title}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this day and all its activities?')) deleteDay(day.id); }} className="text-red-500 hover:text-red-700 p-1 no-print">
-                  🗑️
-                </button>
+              <div className="flex items-center gap-3">
+                {editMode && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); const idx = itinerary.findIndex((d:any)=>d.id===day.id); if (idx>0) moveDay(idx, idx-1); }}
+                      className="min-w-[40px] min-h-[40px] rounded-md border border-gray-300 bg-white text-gray-700 text-base flex items-center justify-center hover:bg-gray-100"
+                    >▲</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); const idx = itinerary.findIndex((d:any)=>d.id===day.id); if (idx<itinerary.length-1) moveDay(idx, idx+1); }}
+                      className="min-w-[40px] min-h-[40px] rounded-md border border-gray-300 bg-white text-gray-700 text-base flex items-center justify-center hover:bg-gray-100"
+                    >▼</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (confirm('Delete this day and all its activities?')) deleteDay(day.id); }}
+                      className="min-w-[40px] min-h-[40px] rounded-md border border-red-300 bg-white text-red-600 flex items-center justify-center no-print hover:bg-red-50"
+                    >🗑️</button>
+                  </div>
+                )}
                 <span className="toggle-icon">{openDays[day.id] ? '▼' : '▶'}</span>
               </div>
             </button>
-            <div id={`day${day.id}`} className={`collapsible-content ${openDays[day.id] ? 'open' : ''} p-3 bg-white`}>
+            <Collapse open={!!openDays[day.id]} className="p-3 bg-white">
               <div className="space-y-3">
                 {day.activities.map((activity: any, index: number) => {
                   const duration = calculateDuration(activity.arriveTime, activity.leaveTime);
@@ -140,9 +166,27 @@ export default function Itinerary() {
                             </div>
                           )}
                         </div>
-                        <div className="flex gap-1 no-print">
-                          <button onClick={() => startEditActivity(day.id, activity)} className="text-gray-500 hover:text-gray-700 p-1">✏️</button>
-                          <button onClick={() => { if (confirm('Delete this activity?')) deleteActivity(day.id, activity.id); }} className="text-red-500 hover:text-red-700 p-1">×</button>
+                        <div className="flex gap-2 no-print">
+                          {editMode && (
+                            <>
+                              <button
+                                onClick={() => startEditActivity(day.id, activity)}
+                                className="min-w-[40px] min-h-[40px] rounded-md border border-gray-300 bg-white text-gray-700 flex items-center justify-center hover:bg-gray-100"
+                              >✏️</button>
+                              <button
+                                onClick={() => { if (confirm('Delete this activity?')) deleteActivity(day.id, activity.id); }}
+                                className="min-w-[40px] min-h-[40px] rounded-md border border-red-300 bg-white text-red-600 flex items-center justify-center hover:bg-red-50"
+                              >×</button>
+                              <button
+                                onClick={() => { const idx = day.activities.findIndex((a:any)=>a.id===activity.id); if (idx>0) moveActivity(day.id, idx, idx-1); }}
+                                className="min-w-[40px] min-h-[40px] rounded-md border border-gray-300 bg-white text-gray-700 flex items-center justify-center hover:bg-gray-100"
+                              >▲</button>
+                              <button
+                                onClick={() => { const idx = day.activities.findIndex((a:any)=>a.id===activity.id); if (idx<day.activities.length-1) moveActivity(day.id, idx, idx+1); }}
+                                className="min-w-[40px] min-h-[40px] rounded-md border border-gray-300 bg-white text-gray-700 flex items-center justify-center hover:bg-gray-100"
+                              >▼</button>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="flex justify-between items-center mt-2">
@@ -179,7 +223,7 @@ export default function Itinerary() {
                   + Add Activity
                 </button>
               </div>
-            </div>
+            </Collapse>
           </div>
         ))}
       </div>

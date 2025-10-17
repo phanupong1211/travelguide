@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import { Currency, Rates, defaultRates, toTHB } from '@/lib/currency';
 import { idbGet, idbSet } from '@/lib/db';
 import { tryCloudLoad, tryCloudSync } from '@/lib/supabase';
-import { isEntitiesMode, loadAllFromEntities, entAddChecklistItem, entToggleChecklistItem, entDeleteChecklistItem, entAddExpense, entUpdateExpenseAmount, entDeleteExpense, entAddDay, entDeleteDay, entAddActivity, entUpdateActivity, entDeleteActivity, entReorderActivities, entReorderDays } from '@/lib/entities';
+import { isEntitiesMode, loadAllFromEntities, entAddChecklistItem, entToggleChecklistItem, entDeleteChecklistItem, entAddExpense, entUpdateExpenseAmount, entDeleteExpense, entAddDay, entDeleteDay, entAddActivity, entUpdateActivity, entDeleteActivity } from '@/lib/entities';
 import { isStoragePath } from '@/lib/storage';
 
 export type ChecklistItem = { id: number; text: string; checked: boolean };
@@ -71,8 +71,6 @@ type AppState = {
   addActivity: (dayId: number, a: Omit<Activity, 'id'>) => void;
   updateActivity: (dayId: number, activityId: number, a: Partial<Activity>) => void;
   deleteActivity: (dayId: number, activityId: number) => void;
-  moveActivity: (dayId: number, fromIndex: number, toIndex: number) => void;
-  moveDay: (fromIndex: number, toIndex: number) => void;
 
   // Notes
   setNotes: (val: string) => void;
@@ -396,40 +394,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     else transientBusy('Deleted');
   };
 
-  const moveActivity: AppState['moveActivity'] = async (dayId, from, to) => {
-    setItinerary((prev) => prev.map((d) => {
-      if (d.id !== dayId) return d;
-      const list = [...d.activities];
-      const [moved] = list.splice(from, 1);
-      list.splice(to, 0, moved);
-      return { ...d, activities: list };
-    }));
-    if (isEntitiesMode) {
-      const day = itinerary.find((d) => d.id === dayId);
-      const ids = (day?.activities || []).map((a) => a.id);
-      const movedIds = [...ids];
-      const [m] = movedIds.splice(from, 1);
-      movedIds.splice(to, 0, m);
-      await runBusy('Reordering...', () => entReorderActivities(dayId, movedIds));
-    } else transientBusy('Reordered');
-  };
-
-  const moveDay: AppState['moveDay'] = async (from, to) => {
-    setItinerary((prev) => {
-      const list = [...prev];
-      const [m] = list.splice(from, 1);
-      list.splice(to, 0, m);
-      return list;
-    });
-    if (isEntitiesMode) {
-      const ids = itinerary.map((d) => d.id);
-      const movedIds = [...ids];
-      const [m] = movedIds.splice(from, 1);
-      movedIds.splice(to, 0, m);
-      await runBusy('Reordering...', () => entReorderDays(movedIds));
-    } else transientBusy('Reordered');
-  };
-
   // Import / Export
   const exportData = () => {
     const data = { expenses, checklist, itinerary, notes, exportDate: new Date().toISOString() };
@@ -482,8 +446,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addActivity,
     updateActivity,
     deleteActivity,
-    moveActivity,
-    moveDay,
     setNotes,
     exportData,
     importData,
@@ -538,3 +500,4 @@ export const useApp = () => {
   if (!ctx) throw new Error('useApp must be used within AppProvider');
   return ctx;
 };
+
