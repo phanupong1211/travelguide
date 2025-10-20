@@ -145,6 +145,22 @@ export async function entUpdateExpenseAmount(id: number, amount: number) {
   if (error) throw error;
 }
 
+export async function entUpdateExpense(id: number, patch: Partial<Expense>) {
+  ensureClient();
+  const payload: any = {};
+  if (patch.item !== undefined) payload.item = patch.item;
+  if (patch.amount !== undefined) payload.amount = patch.amount;
+  if (patch.currency !== undefined) payload.currency = patch.currency as any;
+  if (patch.category !== undefined) payload.category = patch.category;
+  if (patch.date !== undefined) payload.date = patch.date as any;
+  if (patch.billPhoto !== undefined) payload.bill_photo = patch.billPhoto || null;
+  if (patch.paidBy !== undefined) payload.paid_by = patch.paidBy ?? null;
+  if (patch.participants !== undefined) payload.participants = (patch.participants && patch.participants.length) ? patch.participants : null;
+  if (Object.keys(payload).length === 0) return;
+  const { error } = await supabase!.from('expenses').update(payload).eq('id', id).eq('trip_id', tripId);
+  if (error) throw error;
+}
+
 export async function entDeleteExpense(id: number) {
   ensureClient();
   const { error } = await supabase!.from('expenses').delete().eq('id', id).eq('trip_id', tripId);

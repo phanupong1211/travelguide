@@ -58,6 +58,7 @@ type AppState = {
 
   // Expenses
   addExpense: (e: Omit<Expense, 'id' | 'timestamp'> & Partial<Pick<Expense, 'billPhoto'>>) => void;
+  updateExpense: (id: number, patch: Partial<Omit<Expense, 'id' | 'timestamp'>>) => void;
   updateExpenseAmount: (id: number, amount: number) => void;
   deleteExpense: (id: number) => void;
   resetExpenses: () => void;
@@ -344,6 +345,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       transientBusy('Saved');
     }
   };
+  const updateExpense: AppState['updateExpense'] = async (id, patch) => {
+    setExpenses((prev) => prev.map((x) => (x.id === id ? {
+      ...x,
+      ...patch,
+      // normalize types
+      amount: patch.amount !== undefined ? Number(patch.amount) : x.amount,
+      currency: (patch.currency ?? x.currency) as any,
+      participants: (patch.participants && patch.participants.length) ? patch.participants : (patch.participants !== undefined ? undefined : x.participants),
+      billPhoto: patch.billPhoto !== undefined ? (patch.billPhoto || null) : x.billPhoto,
+      timestamp: new Date().toISOString(),
+    } : x)));
+    if (isEntitiesMode) {
+      const { entUpdateExpense } = await import('@/lib/entities');
+      await runBusy('Updating expense...', () => entUpdateExpense(id, patch as any));
+    } else transientBusy('Updated');
+  };
   const updateExpenseAmount = async (id: number, amount: number) => {
     setExpenses((prev) => prev.map((x) => (x.id === id ? { ...x, amount } : x)));
     if (isEntitiesMode) await runBusy('Updating amount...', () => entUpdateExpenseAmount(id, amount));
@@ -466,6 +483,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     clearChecked,
     resetChecklist,
     addExpense,
+    updateExpense,
     updateExpenseAmount,
     deleteExpense,
     resetExpenses,
