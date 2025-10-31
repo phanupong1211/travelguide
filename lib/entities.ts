@@ -21,12 +21,28 @@ export async function loadAllFromEntities(): Promise<{ checklist: ChecklistItem[
   if (e1) throw e1;
 
   // expenses
-  const { data: ex, error: e2 } = await supabase!
-    .from('expenses')
-    .select('id,item,amount,currency,category,date,bill_photo,updated_at,paid_by,participants')
-    .eq('trip_id', tripId)
-    .order('date', { ascending: true })
-    .order('id', { ascending: true });
+  // Try to include settled_by if the column exists; fall back gracefully
+  let ex: any[] | null = null;
+  let e2: any = null;
+  {
+    const { data, error } = await supabase!
+      .from('expenses')
+      .select('id,item,amount,currency,category,date,bill_photo,updated_at,paid_by,participants,settled_by')
+      .eq('trip_id', tripId)
+      .order('date', { ascending: true })
+      .order('id', { ascending: true });
+    if (!error) { ex = data || []; }
+    else {
+      // Retry without settled_by for backward compatibility
+      const { data: data2, error: error2 } = await supabase!
+        .from('expenses')
+        .select('id,item,amount,currency,category,date,bill_photo,updated_at,paid_by,participants')
+        .eq('trip_id', tripId)
+        .order('date', { ascending: true })
+        .order('id', { ascending: true });
+      if (error2) e2 = error2; else ex = data2 || [];
+    }
+  }
   if (e2) throw e2;
 
   // days
@@ -73,6 +89,7 @@ export async function loadAllFromEntities(): Promise<{ checklist: ChecklistItem[
     billPhoto: (x.bill_photo as any) || null,
     paidBy: (x as any).paid_by ?? null,
     participants: Array.isArray((x as any).participants) ? (x as any).participants : undefined,
+    settledBy: Array.isArray((x as any).settled_by) ? (x as any).settled_by : [],
   }));
 
   const itinerary: DayPlan[] = (days || []).map((d) => ({
@@ -124,7 +141,8 @@ export async function entDeleteChecklistItem(id: number) {
 // Expenses CRUD
 export async function entAddExpense(e: Omit<Expense, 'id' | 'timestamp'> & { billPhoto?: string | null }) {
   ensureClient();
-  const { data, error } = await supabase!.from('expenses').insert({
+  // Attempt insert with settled_by; if column missing, retry without it
+  const payloadBase: any = {
     trip_id: tripId,
     item: e.item,
     amount: e.amount,
@@ -134,9 +152,22 @@ export async function entAddExpense(e: Omit<Expense, 'id' | 'timestamp'> & { bil
     bill_photo: e.billPhoto || null,
     paid_by: e.paidBy ?? null,
     participants: e.participants && e.participants.length ? e.participants : null,
-  }).select('id');
-  if (error) throw error;
-  return data![0].id as number;
+  };
+  const payloadWithSettled: any = {
+    ...payloadBase,
+    settled_by: e.settledBy && e.settledBy.length ? e.settledBy : null,
+  };
+  let id: number | null = null;
+  {
+    const { data, error } = await supabase!.from('expenses').insert(payloadWithSettled).select('id');
+    if (!error) id = data![0].id as number;
+    else {
+      const { data: data2, error: error2 } = await supabase!.from('expenses').insert(payloadBase).select('id');
+      if (error2) throw error2;
+      id = data2![0].id as number;
+    }
+  }
+  return id!;
 }
 
 export async function entUpdateExpenseAmount(id: number, amount: number) {
@@ -156,9 +187,19 @@ export async function entUpdateExpense(id: number, patch: Partial<Expense>) {
   if (patch.billPhoto !== undefined) payload.bill_photo = patch.billPhoto || null;
   if (patch.paidBy !== undefined) payload.paid_by = patch.paidBy ?? null;
   if (patch.participants !== undefined) payload.participants = (patch.participants && patch.participants.length) ? patch.participants : null;
+  if (patch.settledBy !== undefined) payload.settled_by = (patch.settledBy && patch.settledBy.length) ? patch.settledBy : null;
   if (Object.keys(payload).length === 0) return;
+  // Try update with settled_by; if column missing, retry without it
   const { error } = await supabase!.from('expenses').update(payload).eq('id', id).eq('trip_id', tripId);
-  if (error) throw error;
+  if (error) {
+    if (String(error.message || '').toLowerCase().includes('settled_by')) {
+      try { delete payload.settled_by; } catch {}
+      const { error: e2 } = await supabase!.from('expenses').update(payload).eq('id', id).eq('trip_id', tripId);
+      if (e2) throw e2;
+    } else {
+      throw error;
+    }
+  }
 }
 
 export async function entDeleteExpense(id: number) {

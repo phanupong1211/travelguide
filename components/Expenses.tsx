@@ -291,41 +291,101 @@ export default function Expenses() {
           {expenses.map((expense) => (
             <div
               key={expense.id}
-              className="expense-row bg-white rounded border border-gray-200 text-sm cursor-pointer"
+              className="expense-row bg-white rounded border border-gray-200 hover:border-gray-300 hover:shadow-sm transition text-sm cursor-pointer"
               onClick={() => {
                 // quick edit amount on card tap
                 setEditId(expense.id);
                 setEditAmount(String(expense.amount ?? 0));
               }}
             >
-              <div className="flex items-center gap-2 p-2">
-                <div className="flex-1">
-                  <div className="font-medium">{expense.item}</div>
-                  <div className="text-gray-500 text-xs">{expense.category} • {expense.date}</div>
+              <div className="flex items-start gap-2 p-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium truncate text-gray-900">{expense.item}</div>
+                    {/* Category pill */}
+                    <span
+                      className={`shrink-0 px-2 py-0.5 rounded-full border text-[10px] ${
+                        expense.category === 'Food' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                        expense.category === 'Hotel' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                        expense.category === 'Transport' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                        expense.category === 'Shopping' ? 'bg-pink-50 text-pink-700 border-pink-200' :
+                        expense.category === 'Activity' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        'bg-gray-50 text-gray-700 border-gray-200'
+                      }`}
+                    >{expense.category}</span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-gray-500 flex items-center gap-2">
+                    <span>📅 {expense.date}</span>
+                    {expense.billPhoto && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setViewPhotoExpenseId(expense.id); }}
+                        className="underline text-blue-600 hover:text-blue-800"
+                        title="View Bill"
+                      >
+                        📎 Receipt
+                      </button>
+                    )}
+                    {(() => {
+                      const everyone = people || [];
+                      const parts = (Array.isArray(expense.participants) && expense.participants.length) ? expense.participants : everyone;
+                      const settled = Array.isArray(expense.settledBy) ? expense.settledBy : [];
+                      const settledCount = settled.filter((n) => n && n !== expense.paidBy && parts.includes(n)).length;
+                      const totalCount = parts.filter((n) => n && n !== expense.paidBy).length;
+                      if (!totalCount) return null;
+                      return (
+                        <span className={`ml-1 px-1.5 py-0.5 rounded-full border ${settledCount === totalCount ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`} title="Settled status">
+                          {settledCount}/{totalCount} settled
+                        </span>
+                      );
+                    })()}
+                  </div>
                   {(expense.paidBy || (expense.participants && expense.participants.length)) && (
-                    <div className="text-xs text-gray-500">{expense.paidBy ? `Paid by ${expense.paidBy}` : ''}{expense.paidBy && expense.participants && expense.participants.length ? ' • ' : ''}{expense.participants && expense.participants.length ? `Split: ${expense.participants.join(', ')}` : ''}</div>
+                    <div className="mt-1 text-[11px] text-gray-600 flex flex-wrap items-center gap-1">
+                      {expense.paidBy && (
+                        <span className="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-300 text-gray-700">Paid by {expense.paidBy}</span>
+                      )}
+                      {(() => {
+                        const everyone = people || [];
+                        const parts = (Array.isArray(expense.participants) && expense.participants.length) ? expense.participants : everyone;
+                        if (!parts.length) return null;
+                        return (
+                          <span className="flex items-center gap-1">
+                            <span className="text-gray-400">•</span>
+                            <span className="text-gray-500">Split:</span>
+                            <span className="flex flex-wrap gap-1">
+                              {parts.map((p) => (
+                                <span key={p} className="px-2 py-0.5 rounded-full bg-white border border-gray-300 text-gray-700">{p}</span>
+                              ))}
+                            </span>
+                          </span>
+                        );
+                      })()}
+                    </div>
                   )}
-                  {expense.billPhoto ? (
-                    <button onClick={(e) => { e.stopPropagation(); setViewPhotoExpenseId(expense.id); }} className="text-blue-600 hover:text-blue-800 text-xs mt-1">📷 View Bill</button>
-                  ) : null}
                 </div>
-                <div className="text-right">
-                  <div className="font-medium cursor-pointer hover:text-gray-600" onClick={(e) => { e.stopPropagation(); setEditId(expense.id); setEditAmount(String(expense.amount)); }}>
+                <div className="text-right shrink-0">
+                  <div className="font-semibold text-gray-900 cursor-pointer hover:text-gray-600" onClick={(e) => { e.stopPropagation(); setEditId(expense.id); setEditAmount(String(expense.amount)); }}>
                     {Number(expense.amount ?? 0).toLocaleString()} {expense.currency}
                   </div>
-                  <div className="text-xs text-gray-500">≈ {toTHB(Number(expense.amount ?? 0), expense.currency).toLocaleString()} THB</div>
+                  <div className="text-[11px] text-gray-500">≈ {toTHB(Number(expense.amount ?? 0), expense.currency).toLocaleString()} THB</div>
+                  <div className="mt-1 flex justify-end">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm('Delete this expense?')) return;
+                        const exp = expenses.find((e) => e.id === expense.id);
+                        if (exp?.billPhoto && isStoragePath(exp.billPhoto) && storageAvailable()) {
+                          try { await deleteBill(exp.billPhoto); } catch {}
+                        }
+                        deleteExpense(expense.id);
+                      }}
+                      className="inline-flex items-center gap-1 text-gray-500 hover:text-red-700 px-2 py-1 rounded"
+                      title="Delete"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
-                <button onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!confirm('Delete this expense?')) return;
-                  const exp = expenses.find((e) => e.id === expense.id);
-                  if (exp?.billPhoto && isStoragePath(exp.billPhoto) && storageAvailable()) {
-                    try { await deleteBill(exp.billPhoto); } catch {}
-                  }
-                  deleteExpense(expense.id);
-                }} className="text-gray-400 hover:text-gray-600 p-1">
-                  ×
-                </button>
               </div>
             </div>
           ))}
@@ -343,6 +403,42 @@ export default function Expenses() {
           className="w-full px-3 py-2 border border-gray-300 rounded mb-4"
           onChange={(e) => setEditAmount(e.target.value)}
         />
+        {/* Quick settle toggles inside Edit Amount */}
+        {(() => {
+          if (editId == null) return null;
+          const expense = expenses.find((e) => e.id === editId);
+          if (!expense) return null;
+          const allPeople = people || [];
+          const parts = (Array.isArray(expense.participants) && expense.participants.length) ? expense.participants : allPeople;
+          const list = parts.filter((p) => p && p !== expense.paidBy);
+          if (!list.length) return null;
+          const settled = Array.isArray(expense.settledBy) ? expense.settledBy : [];
+          return (
+            <div className="mb-3">
+              <div className="text-sm text-gray-700 mb-1">คืนเงินแล้ว</div>
+              <div className="flex flex-wrap gap-1">
+                {list.map((name) => {
+                  const isSettled = settled.includes(name);
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      className={`px-2 py-0.5 rounded-full border text-xs ${isSettled ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                      title={isSettled ? 'ชำระแล้ว' : 'ยังไม่ชำระ'}
+                      onClick={() => {
+                        const curr = Array.isArray(expense.settledBy) ? expense.settledBy : [];
+                        const next = curr.includes(name) ? curr.filter((n) => n !== name) : [...curr, name];
+                        updateExpense(expense.id, { settledBy: next as any });
+                      }}
+                    >
+                      {isSettled ? '✓ ' : '+ '}{name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         <div className="flex gap-2">
           <button onClick={() => setEditId(null)} className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400">Cancel</button>
           <button

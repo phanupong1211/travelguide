@@ -18,6 +18,7 @@ export type Expense = {
   billPhoto?: string | null;
   paidBy?: string | null;
   participants?: string[]; // names that share this expense equally
+  settledBy?: string[]; // names who have already paid back for this expense
 };
 
 export type Activity = {
@@ -136,8 +137,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Load from normalized tables
           try {
             const { checklist: clE, expenses: exE, itinerary: itE, notes: ntE, people: pplE } = await loadAllFromEntities();
+            // Merge local-only fields (e.g., settledBy) from IDB by id or signature (item|date|amount|currency)
+            const localEx = await idbGet<Expense[]>('expenses', 'items');
+            const sig = (e: Expense) => {
+              const item = (e.item || '').trim().toLowerCase();
+              const date = e.date || '';
+              const currency = String(e.currency || 'THB');
+              const amt = Math.round(Number(e.amount || 0) * 100) / 100;
+              return `${item}|${date}|${amt}|${currency}`;
+            };
+            let mergedEx: Expense[] = exE.map((e) => ({ ...e, settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [] }));
+            if (Array.isArray(localEx) && localEx.length) {
+              const byId = new Map(localEx.map((x) => [x.id, x] as const));
+              const bySig = new Map(localEx.map((x) => [sig(x as any), x] as const));
+              const used = new Set<number>();
+              const needPush: { id: number; settledBy: string[] }[] = [];
+              mergedEx = mergedEx.map((e) => {
+                if (Array.isArray(e.settledBy) && e.settledBy.length) return e; // already from server
+                const mId = byId.get(e.id);
+                let settledBy: string[] | undefined = Array.isArray(mId?.settledBy) ? mId!.settledBy : undefined;
+                if (!settledBy || settledBy.length === 0) {
+                  const mSig = bySig.get(sig(e));
+                  if (mSig && Array.isArray(mSig.settledBy) && mSig.settledBy.length && !used.has(mSig.id)) {
+                    settledBy = mSig.settledBy;
+                    used.add(mSig.id);
+                  }
+                }
+                if (settledBy && settledBy.length) {
+                  // best-effort push to Supabase so it persists cross-devices
+                  needPush.push({ id: e.id, settledBy });
+                  return { ...e, settledBy };
+                }
+                return e;
+              });
+              // Push in background (ignore errors)
+              if (needPush.length) {
+                import('@/lib/entities').then(async (m) => {
+                  for (const row of needPush) {
+                    try { await m.entUpdateExpense(row.id, { settledBy: row.settledBy } as any); } catch {}
+                  }
+                });
+              }
+            }
             setChecklist(clE);
-            setExpenses(exE);
+            setExpenses(mergedEx);
             setItinerary(itE);
             setNotes(ntE);
             if (pplE && pplE.length) setPeopleState(pplE);
@@ -162,6 +205,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           currency: (e as any).currency || 'THB',
           paidBy: (e as any).paidBy ?? null,
           participants: Array.isArray((e as any).participants) ? (e as any).participants : undefined,
+          settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [],
         }));
         const normalizeItinerary = (arr: any[] = []) => arr.map((d) => ({
           ...d,
@@ -182,7 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setPeopleState(ppl && ppl.length ? ppl : ['You', 'Friend 1', 'Friend 2']);
         setReady(true);
       } catch {
-        const normalizeExpenses = (arr: any[] = []) => arr.map((e) => ({ ...e, amount: Number(e?.amount ?? 0), currency: e?.currency || 'THB', paidBy: (e as any).paidBy ?? null, participants: Array.isArray((e as any).participants) ? (e as any).participants : undefined }));
+        const normalizeExpenses = (arr: any[] = []) => arr.map((e) => ({ ...e, amount: Number(e?.amount ?? 0), currency: e?.currency || 'THB', paidBy: (e as any).paidBy ?? null, participants: Array.isArray((e as any).participants) ? (e as any).participants : undefined, settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [] }));
         const normalizeItinerary = (arr: any[] = []) => arr.map((d) => ({
           ...d,
           activities: Array.isArray((d as any).activities)
@@ -202,7 +246,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!isEntitiesMode) tryCloudLoad().then((res) => {
         if (res.ok && res.data) {
           const d = res.data as any;
-          const normalizeExpenses = (arr: any[] = []) => arr.map((e) => ({ ...e, amount: Number(e?.amount ?? 0), currency: e?.currency || 'THB' }));
+          const normalizeExpenses = (arr: any[] = []) => arr.map((e) => ({
+            ...e,
+            amount: Number(e?.amount ?? 0),
+            currency: e?.currency || 'THB',
+            paidBy: (e as any).paidBy ?? null,
+            participants: Array.isArray((e as any).participants) ? (e as any).participants : undefined,
+            settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [],
+          }));
           const normalizeItinerary = (arr: any[] = []) => arr.map((x) => ({
             ...x,
             activities: Array.isArray(x.activities)
@@ -334,13 +385,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             billPhoto: e.billPhoto ?? null,
             paidBy: e.paidBy ?? null,
             participants: e.participants && e.participants.length ? e.participants : undefined,
+            settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [],
           },
         ]);
       });
     } else {
       setExpenses((prev) => [
         ...prev,
-        { id: Date.now(), item: e.item, amount: e.amount, currency: e.currency, category: e.category, date: e.date, timestamp: new Date().toISOString(), billPhoto: e.billPhoto ?? null, paidBy: e.paidBy ?? null, participants: e.participants && e.participants.length ? e.participants : undefined },
+        { id: Date.now(), item: e.item, amount: e.amount, currency: e.currency, category: e.category, date: e.date, timestamp: new Date().toISOString(), billPhoto: e.billPhoto ?? null, paidBy: e.paidBy ?? null, participants: e.participants && e.participants.length ? e.participants : undefined, settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [] },
       ]);
       transientBusy('Saved');
     }
@@ -354,6 +406,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       currency: (patch.currency ?? x.currency) as any,
       participants: (patch.participants && patch.participants.length) ? patch.participants : (patch.participants !== undefined ? undefined : x.participants),
       billPhoto: patch.billPhoto !== undefined ? (patch.billPhoto || null) : x.billPhoto,
+      settledBy: patch.settledBy !== undefined ? (Array.isArray(patch.settledBy) ? patch.settledBy : []) : (Array.isArray(x.settledBy) ? x.settledBy : []),
       timestamp: new Date().toISOString(),
     } : x)));
     if (isEntitiesMode) {
@@ -454,7 +507,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   const importData = (json: string) => {
     const data = JSON.parse(json);
-    const normalizeExpenses = (arr: any[] = []) => arr.map((e) => ({ ...e, amount: Number(e?.amount ?? 0), currency: e?.currency || 'THB' }));
+    const normalizeExpenses = (arr: any[] = []) => arr.map((e) => ({
+      ...e,
+      amount: Number(e?.amount ?? 0),
+      currency: e?.currency || 'THB',
+      paidBy: (e as any).paidBy ?? null,
+      participants: Array.isArray((e as any).participants) ? (e as any).participants : undefined,
+      settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [],
+    }));
     const normalizeItinerary = (arr: any[] = []) => arr.map((x) => ({
       ...x,
       activities: Array.isArray(x.activities)
@@ -513,8 +573,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         if (isEntitiesMode) {
           const { checklist: clE, expenses: exE, itinerary: itE, notes: ntE } = await loadAllFromEntities();
+          // Merge local-only fields (e.g., settledBy) by id or signature
+          const localEx = await idbGet<Expense[]>('expenses', 'items');
+          const sig = (e: Expense) => {
+            const item = (e.item || '').trim().toLowerCase();
+            const date = e.date || '';
+            const currency = String(e.currency || 'THB');
+            const amt = Math.round(Number(e.amount || 0) * 100) / 100;
+            return `${item}|${date}|${amt}|${currency}`;
+          };
+          let mergedEx: Expense[] = exE.map((e) => ({ ...e, settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [] }));
+          if (Array.isArray(localEx) && localEx.length) {
+            const byId = new Map(localEx.map((x) => [x.id, x] as const));
+            const bySig = new Map(localEx.map((x) => [sig(x as any), x] as const));
+            const used = new Set<number>();
+            const needPush: { id: number; settledBy: string[] }[] = [];
+            mergedEx = mergedEx.map((e) => {
+              if (Array.isArray(e.settledBy) && e.settledBy.length) return e;
+              const mId = byId.get(e.id);
+              let settledBy: string[] | undefined = Array.isArray(mId?.settledBy) ? mId!.settledBy : undefined;
+              if (!settledBy || settledBy.length === 0) {
+                const mSig = bySig.get(sig(e));
+                if (mSig && Array.isArray(mSig.settledBy) && mSig.settledBy.length && !used.has(mSig.id)) {
+                  settledBy = mSig.settledBy;
+                  used.add(mSig.id);
+                }
+              }
+              if (settledBy && settledBy.length) {
+                needPush.push({ id: e.id, settledBy });
+                return { ...e, settledBy };
+              }
+              return e;
+            });
+            if (needPush.length) {
+              import('@/lib/entities').then(async (m) => {
+                for (const row of needPush) { try { await m.entUpdateExpense(row.id, { settledBy: row.settledBy } as any); } catch {} }
+              });
+            }
+          }
           setChecklist(clE);
-          setExpenses(exE);
+          setExpenses(mergedEx);
           setItinerary(itE);
           setNotes(ntE);
           return true;
@@ -523,7 +621,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (res.ok && res.data) {
           const d: any = res.data;
           if (d.checklist) setChecklist(d.checklist);
-          if (d.expenses) setExpenses(d.expenses.map((e: any) => ({ ...e, amount: Number(e?.amount ?? 0) })));
+          if (d.expenses) setExpenses(d.expenses.map((e: any) => ({
+            ...e,
+            amount: Number(e?.amount ?? 0),
+            currency: e?.currency || 'THB',
+            paidBy: (e as any).paidBy ?? null,
+            participants: Array.isArray((e as any).participants) ? (e as any).participants : undefined,
+            settledBy: Array.isArray((e as any).settledBy) ? (e as any).settledBy : [],
+          })));
           if (d.itinerary) setItinerary(d.itinerary.map((x: any) => ({
             ...x,
             activities: Array.isArray(x.activities) ? x.activities.map((a: any) => ({ ...a, cost: Number(a?.cost ?? 0) })) : [],

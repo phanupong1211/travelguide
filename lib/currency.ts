@@ -5,7 +5,7 @@ export type Rates = {
   JPY: number; // JPY -> THB
 };
 
-export const defaultRates: Rates = { USD: 35, JPY: 0.24 };
+export const defaultRates: Rates = { USD: 32.33, JPY: 0.21 };
 
 export function toTHB(amount: number, currency: Currency, rates: Rates) {
   switch (currency) {

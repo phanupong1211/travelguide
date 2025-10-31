@@ -8,14 +8,14 @@ function convert(amount: number, from: Currency, to: Currency, rates: { USD: num
   if (from === to) return amount;
   const toTHB = (a: number, cur: Currency) => {
     if (cur === 'THB') return a;
-    if (cur === 'USD') return a * (rates.USD || 35);
-    if (cur === 'JPY') return a * (rates.JPY || 0.24);
+    if (cur === 'USD') return a * (rates.USD || 32.33);
+    if (cur === 'JPY') return a * (rates.JPY || 0.21);
     return a;
   };
   const fromTHB = (a: number, cur: Currency) => {
     if (cur === 'THB') return a;
-    if (cur === 'USD') return a / (rates.USD || 35);
-    if (cur === 'JPY') return a / (rates.JPY || 0.24);
+    if (cur === 'USD') return a / (rates.USD || 32.33);
+    if (cur === 'JPY') return a / (rates.JPY || 0.21);
     return a;
   };
   const thb = toTHB(amount, from);
